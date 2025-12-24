@@ -22,7 +22,7 @@ python mail.py
 
 <img width="499" height="83" alt="image" src="https://github.com/user-attachments/assets/1b2a3ea4-50c0-437a-8b5b-7d5703ee9cad" />
 
-5. Depois disso, pode ocorrer de o formulário não ter respostas registradas na semana atual, X (pois é teste). Você pode acessar a planilha de **RESPOSTAS*
+5. Depois disso, pode ocorrer de o formulário não ter respostas registradas na semana atual, X (pois é teste). Você pode acessar a planilha de **RESPOSTAS**
    [AQUI](https://docs.google.com/spreadsheets/d/1VeInFHfXwIrWc06CSn6ode2IRsThyWITMrqFIV1cXoU/edit?usp=sharing), edite manualmente algumas datas para fazer o teste. Mas se você está rodando dentro da janela de seg-qui, pode criar respostas no formulário, diretamente.
 6. Ele pedirá para confirmar se a mensagem está correta, digite `s`
 
