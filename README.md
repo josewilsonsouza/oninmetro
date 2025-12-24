@@ -3,7 +3,7 @@
 A ideia desse projeto é criar um robô simples que realiza a tarefa de enviar um email semanal para o destinatário: `diope@inmetro.gov.br`. A plataforma de email é o [Webmail](https://webmail.inmetro.gov.br/owa/).
 
 - Primeio, uma enquete é enviada na semana atual, X, que pode ser acessada [AQUI](https://forms.gle/Pj3YoQni55LQSXZ66). Essa enquete pode ser preenchida de segunda à quinta, de X, até às 14:29H, aceita modificações nesse período.
-- Chegando na quinta (ou quando esse código for rodado), ao rodar esse código, automaticamente as respostas serão detectadas, e as informações de email preenchidas.
+- Chegando na quinta (ou quando esse código for rodado), automaticamente as respostas serão detectadas, e as informações de email preenchidas.
 
 ## COMO USAR
 1. Se já tem o `Python` na sua máquina, vai precisar das seguintes instalações:
