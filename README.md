@@ -28,7 +28,7 @@ python mail.py
 
   <img width="428" height="107" alt="image" src="https://github.com/user-attachments/assets/7237fadc-8246-477e-9c9a-f3703f985473" />
    
-7. Pronto, agora veja as janelas abrindo e o robô trabalhando. No arquivo `mail.py` ele vai tentar preenhcer assim
+7. Pronto, agora veja as janelas abrindo e o robô trabalhando. No arquivo `mail.py` você pode editar as informações:
    - Campo `Para`: `destinatario@inmetro.gov.br`
    - Campo `Cc`: `copia1@inmetro.gov.br; copia2@inmetro.gov.br; copia3@inmetro.gov.br`
    - Campo `Assunto`: `Solicitação de utililização do transporte Inmetro`
