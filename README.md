@@ -15,9 +15,9 @@ pip install pandas, selenium, webdriver_manager, datetime, time, traceback
 ```
 2. Agora clone esse repositório:
 ```bash
-git clone https://github.com/josewilsonsouza/robomail.git
+git clone https://github.com/josewilsonsouza/oninmetro.git
 ```
-3. Navegue até a pasta `robomail` e rode o script `mail.py`
+3. Navegue até a pasta `oninmetro` e rode o script `mail.py`
 ```bash
 python mail.py
 ```
