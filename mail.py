@@ -240,15 +240,24 @@ def enviar_email(auto_mode=False):
             chk_light = driver.find_element(By.ID, "chkBsc")
             # Verifica se está marcado e desmarca se necessário
             if chk_light.is_selected():
-                driver.execute_script("arguments[0].click();", chk_light)
-                #print("   -> Checkbox Light desmarcado - forçando versão Padrão")
+                # Desmarca o checkbox Light via click direto
+                chk_light.click()
+                time.sleep(0.3)
+                # Verifica se desmarcou, senão tenta via JavaScript
+                if chk_light.is_selected():
+                    driver.execute_script("arguments[0].checked = false;", chk_light)
+                # Resultado final
+                if not chk_light.is_selected():
+                    print("   -> Checkbox Light desmarcado - forçando versão Padrão")
+                else:
+                    print("   -> AVISO: Checkbox ainda marcado após tentativa")
             else:
-                print("   -> Versão Padrão selecionada")
+                print("   -> Versão Padrão já selecionada")
         except Exception as e:
             print(f"   -> Não foi possível verificar checkbox: {e}")
             print("   -> Continuando com configuração padrão")
 
-        time.sleep(1) 
+        time.sleep(1)
 
         # 4. Entrar
         print("Passo 4: Entrando...")
@@ -284,25 +293,25 @@ def enviar_email(auto_mode=False):
             tentativa_sucesso = True
             time.sleep(1)
         except:
-            # Se não encontrou, tenta versão Light
-            try:
-                btn_novo = WebDriverWait(driver, 3).until(
-                    EC.element_to_be_clickable((By.ID, "lnkNew"))
-                )
-                btn_novo.click()
-                print("   -> ⚠️ Versão LIGHT carregou (HTML pode não funcionar)")
-                tentativa_sucesso = True
-            except:
-                # Último recurso: tenta pelo texto
+            # Se não encontrou, tenta versão Light com múltiplos seletores
+            selectors_novo = [
+                (By.ID, "lnkHdrnewmsg"),
+                (By.ID, "lnkNew"),
+                (By.PARTIAL_LINK_TEXT, "Nova"),
+                (By.LINK_TEXT, "Nova Mensagem"),
+                (By.XPATH, "//a[contains(text(), 'Nova')]"),
+            ]
+            for sel_type, sel_value in selectors_novo:
                 try:
                     btn_novo = WebDriverWait(driver, 3).until(
-                        EC.element_to_be_clickable((By.LINK_TEXT, "Nova"))
+                        EC.element_to_be_clickable((sel_type, sel_value))
                     )
                     btn_novo.click()
-                    print("   -> ⚠️ Versão LIGHT carregou (HTML pode não funcionar)")
+                    print(f"   -> ⚠️ Versão LIGHT - cliquei 'Nova Mensagem' via {sel_value}")
                     tentativa_sucesso = True
+                    break
                 except:
-                    pass
+                    continue
 
         # Se nenhum método funcionou, tenta atalho de teclado
         if not tentativa_sucesso:
@@ -321,15 +330,23 @@ def enviar_email(auto_mode=False):
 
         # Gerencia janelas (caso abra pop-up na versão Padrão)
         print("   -> Verificando se abriu nova janela...")
-        time.sleep(1)
+        time.sleep(2)
         if len(driver.window_handles) > 1:
             print(f"   -> Nova janela detectada! Mudando para a janela de composição")
             driver.switch_to.window(driver.window_handles[-1])
+        else:
+            print("   -> Formulário inline (versão Light)")
+
+        # Aguarda o formulário de composição carregar
+        time.sleep(3)
+
+        if auto_mode:
+            driver.save_screenshot("debug_apos_novo.png")
+            print(f"   -> Screenshot pós-Novo salvo (debug_apos_novo.png)")
+            print(f"   -> URL atual: {driver.current_url}")
 
         # 6. Preencher E-mail (Tenta seletores de ambas as versões)
         print("Passo 6: Escrevendo e-mail...")
-
-        time.sleep(.5)  # Aguarda carregar formulário completamente
 
         # Campo "Para"
         campo_para_preenchido = False
@@ -382,187 +399,159 @@ def enviar_email(auto_mode=False):
             except:
                 print("   -> AVISO: Campo 'Assunto' não encontrado.")
 
-        # corpo do email (HTML formatado)
+        # corpo do email
         corpo_preenchido = False
 
-        # ESTRATÉGIA: Abrir HTML renderizado no navegador, copiar, colar
-        print("   -> Preparando HTML formatado...")
+        # Detecta se estamos em Light version (sem popup = 1 janela só)
+        versao_light = len(driver.window_handles) == 1
 
-        html_temp_path = os.path.join(os.path.dirname(__file__), "temp_email.html")
-
-        # Salva o HTML em arquivo temporário
-        with open(html_temp_path, "w", encoding="utf-8") as f:
-            f.write(corpo_html)
-
-        # Guarda TODAS as janelas abertas ANTES de abrir o HTML
-        janelas_antes = driver.window_handles
-        janela_email_popup = driver.current_window_handle  # Popup do email
-        janela_principal = janelas_antes[0]  # Primeira janela (principal)
-        print(f"   -> Janelas abertas antes: {len(janelas_antes)}")
-        print(f"   -> Janela principal: {janela_principal[:8]}...")
-        print(f"   -> Janela email popup: {janela_email_popup[:8]}...")
-
-        # VOLTA para a janela PRINCIPAL para abrir o HTML (popups bloqueiam window.open)
-        driver.switch_to.window(janela_principal)
-        print(f"   -> Mudou para janela principal")
-        time.sleep(0.5)
-
-        # Converte o caminho do arquivo para URL (multiplataforma)
-        if os.name == "nt":
-            file_path_url = f"file:///{html_temp_path.replace(chr(92), '/')}"
+        if versao_light:
+            # VERSÃO LIGHT: textarea aceita apenas texto puro (send_keys direto)
+            print("   -> Versão Light detectada: preenchendo corpo com texto puro...")
+            selectors_corpo_light = [
+                (By.NAME, "txtbdy"),
+                (By.ID, "txtBdy"),
+            ]
+            for sel_type, sel_value in selectors_corpo_light:
+                try:
+                    campo_corpo = driver.find_element(sel_type, sel_value)
+                    campo_corpo.click()
+                    time.sleep(0.3)
+                    campo_corpo.clear()
+                    campo_corpo.send_keys(corpo_texto)
+                    corpo_preenchido = True
+                    print(f"   -> ✅ Corpo do email preenchido com texto puro (Light: {sel_value})")
+                    break
+                except:
+                    continue
         else:
-            file_path_url = f"file://{html_temp_path}"
-        print(f"   -> Arquivo HTML: {file_path_url}")
+            # VERSÃO PADRÃO: usa estratégia de copiar HTML renderizado e colar
+            print("   -> Versão Padrão: preparando HTML formatado...")
 
-        # alternativa abrir nova aba vazia primeiro, depois navegar
-        try:
-            # Abre nova aba vazia
-            driver.execute_script("window.open('about:blank', '_blank');")
-            time.sleep(1)
+            html_temp_path = os.path.join(os.path.dirname(__file__), "temp_email.html")
 
-            # Verifica se abriu
-            janelas_temp = driver.window_handles
-            print(f"   -> Após abrir aba vazia: {len(janelas_temp)} janelas")
+            # Salva o HTML em arquivo temporário
+            with open(html_temp_path, "w", encoding="utf-8") as f:
+                f.write(corpo_html)
 
-            if len(janelas_temp) > len(janelas_antes):
-                # Muda para a nova aba
-                nova_aba = janelas_temp[-1]
-                driver.switch_to.window(nova_aba)
-                print(f"   -> Mudou para nova aba: {nova_aba[:8]}...")
+            # Guarda TODAS as janelas abertas ANTES de abrir o HTML
+            janelas_antes = driver.window_handles
+            janela_email_popup = driver.current_window_handle  # Popup do email
+            janela_principal = janelas_antes[0]  # Primeira janela (principal)
+            print(f"   -> Janelas abertas antes: {len(janelas_antes)}")
+            print(f"   -> Janela principal: {janela_principal[:8]}...")
+            print(f"   -> Janela email popup: {janela_email_popup[:8]}...")
 
-                # Agora navega para o arquivo HTML
-                driver.get(file_path_url)
-                print(f"   -> Navegou para arquivo HTML")
-                time.sleep(1)
+            # VOLTA para a janela PRINCIPAL para abrir o HTML (popups bloqueiam window.open)
+            driver.switch_to.window(janela_principal)
+            print(f"   -> Mudou para janela principal")
+            time.sleep(0.5)
+
+            # Converte o caminho do arquivo para URL (multiplataforma)
+            if os.name == "nt":
+                file_path_url = f"file:///{html_temp_path.replace(chr(92), '/')}"
             else:
-                print(f"   -> ERRO: Nova aba não abriu!")
-        except Exception as e:
-            print(f"   -> ERRO ao abrir aba: {e}")
+                file_path_url = f"file://{html_temp_path}"
+            print(f"   -> Arquivo HTML: {file_path_url}")
 
-        # Identifica qual é a janela HTML (a nova que foi aberta)
-        janelas_depois = driver.window_handles
-        print(f"   -> Janelas abertas depois: {len(janelas_depois)}")
-        print(f"   -> Lista de janelas: {[w[:8] + '...' for w in janelas_depois]}")
-
-        janela_html = None
-        for w in janelas_depois:
-            if w not in janelas_antes:
-                janela_html = w
-                break
-
-        if janela_html:
-            # Muda para a janela HTML
-            driver.switch_to.window(janela_html)
-            time.sleep(0.5)
-
-            # Seleciona todo o conteúdo renderizado e copia
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + 'a')
-            time.sleep(0.3)
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + 'c')
-            time.sleep(0.3)
-            print("   -> HTML renderizado copiado da área de transferência")
-
-            # Fecha só a aba HTML
-            driver.close()
-            print(f"   -> Aba HTML fechada")
-
-            # Volta para a janela do email POPUP
-            driver.switch_to.window(janela_email_popup)
-            print(f"   -> Voltou para janela do email popup")
-            time.sleep(0.5)
-        else:
-            print("   -> AVISO: Não conseguiu abrir janela HTML")
-            # Se não conseguiu, volta para o popup do email
-            driver.switch_to.window(janela_email_popup)
-
-        # Agora cola o HTML formatado no campo do corpo
-        try:
-            # Tenta Standard version: iframe com id="ifBdy"
-            iframe_corpo = driver.find_element(By.ID, "ifBdy")
-            driver.switch_to.frame(iframe_corpo)
-            time.sleep(0.5)
-
-            # Dentro do iframe, procura o body e cola
-            body_iframe = driver.find_element(By.TAG_NAME, "body")
-            body_iframe.click()
-            time.sleep(0.3)
-
-            # Cola o conteúdo HTML (Ctrl+V)
-            body_iframe.send_keys(Keys.CONTROL + 'v')
-            time.sleep(0.5)
-
-            # Volta para o contexto principal
-            driver.switch_to.default_content()
-
-            corpo_preenchido = True
-            print("   -> ✅ Corpo do email preenchido com HTML formatado (iframe Standard version)")
-        except:
+            # alternativa abrir nova aba vazia primeiro, depois navegar
             try:
-                # Tenta Light version: textarea com id="txtBdy"
-                campo_corpo = driver.find_element(By.ID, "txtBdy")
-                campo_corpo.click()
+                # Abre nova aba vazia
+                driver.execute_script("window.open('about:blank', '_blank');")
+                time.sleep(1)
+
+                # Verifica se abriu
+                janelas_temp = driver.window_handles
+                print(f"   -> Após abrir aba vazia: {len(janelas_temp)} janelas")
+
+                if len(janelas_temp) > len(janelas_antes):
+                    # Muda para a nova aba
+                    nova_aba = janelas_temp[-1]
+                    driver.switch_to.window(nova_aba)
+                    print(f"   -> Mudou para nova aba: {nova_aba[:8]}...")
+
+                    # Agora navega para o arquivo HTML
+                    driver.get(file_path_url)
+                    print(f"   -> Navegou para arquivo HTML")
+                    time.sleep(1)
+                else:
+                    print(f"   -> ERRO: Nova aba não abriu!")
+            except Exception as e:
+                print(f"   -> ERRO ao abrir aba: {e}")
+
+            # Identifica qual é a janela HTML (a nova que foi aberta)
+            janelas_depois = driver.window_handles
+            print(f"   -> Janelas abertas depois: {len(janelas_depois)}")
+            print(f"   -> Lista de janelas: {[w[:8] + '...' for w in janelas_depois]}")
+
+            janela_html = None
+            for w in janelas_depois:
+                if w not in janelas_antes:
+                    janela_html = w
+                    break
+
+            if janela_html:
+                # Muda para a janela HTML
+                driver.switch_to.window(janela_html)
                 time.sleep(0.5)
-                campo_corpo.clear()
+
+                # Seleciona todo o conteúdo renderizado e copia
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + 'a')
+                time.sleep(0.3)
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + 'c')
+                time.sleep(0.3)
+                print("   -> HTML renderizado copiado da área de transferência")
+
+                # Fecha só a aba HTML
+                driver.close()
+                print(f"   -> Aba HTML fechada")
+
+                # Volta para a janela do email POPUP
+                driver.switch_to.window(janela_email_popup)
+                print(f"   -> Voltou para janela do email popup")
+                time.sleep(0.5)
+            else:
+                print("   -> AVISO: Não conseguiu abrir janela HTML")
+                # Se não conseguiu, volta para o popup do email
+                driver.switch_to.window(janela_email_popup)
+
+            # Agora cola o HTML formatado no campo do corpo
+            try:
+                # Tenta Standard version: iframe com id="ifBdy"
+                iframe_corpo = driver.find_element(By.ID, "ifBdy")
+                driver.switch_to.frame(iframe_corpo)
+                time.sleep(0.5)
+
+                # Dentro do iframe, procura o body e cola
+                body_iframe = driver.find_element(By.TAG_NAME, "body")
+                body_iframe.click()
+                time.sleep(0.3)
 
                 # Cola o conteúdo HTML (Ctrl+V)
-                campo_corpo.send_keys(Keys.CONTROL + 'v')
+                body_iframe.send_keys(Keys.CONTROL + 'v')
+                time.sleep(0.5)
+
+                # Volta para o contexto principal
+                driver.switch_to.default_content()
 
                 corpo_preenchido = True
-                print("   -> ✅ Corpo do email preenchido com HTML formatado (textarea)")
+                print("   -> ✅ Corpo do email preenchido com HTML formatado (iframe Standard version)")
             except:
                 try:
-                    # Tenta Light version com name="txtbdy" (minúsculo)
-                    campo_corpo = driver.find_element(By.NAME, "txtbdy")
+                    campo_corpo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[contenteditable='true']")))
                     campo_corpo.click()
                     time.sleep(0.5)
-                    campo_corpo.clear()
-
-                    # Cola o conteúdo HTML (Ctrl+V)
                     campo_corpo.send_keys(Keys.CONTROL + 'v')
-
                     corpo_preenchido = True
-                    print("   -> ✅ Corpo do email preenchido com HTML formatado (Light version)")
-                except:
-                    # Tenta contenteditable div
-                    try:
-                        campo_corpo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[contenteditable='true']")))
-                        campo_corpo.click()
-                        time.sleep(0.5)
+                    print("   -> ✅ Corpo do email preenchido com HTML formatado (contenteditable)")
+                except Exception as e:
+                    print(f"   -> AVISO: Não conseguiu preencher corpo na versão Padrão: {e}")
 
-                        # Cola o conteúdo HTML (Ctrl+V)
-                        campo_corpo.send_keys(Keys.CONTROL + 'v')
-
-                        corpo_preenchido = True
-                        print("   -> ✅ Corpo do email preenchido com HTML formatado (contenteditable)")
-                    except Exception as e:
-                        # Tenta seletores alternativos (editores ricos)
-                        selectors_corpo = [
-                            (By.CSS_SELECTOR, "div[aria-label*='Corpo da mensagem']"),
-                            (By.CSS_SELECTOR, "div[role='textbox']"),
-                            (By.XPATH, "//div[@contenteditable='true']"),
-                            (By.CSS_SELECTOR, "textarea[aria-label*='Mensagem']"),
-                        ]
-
-                        for selector_type, selector_value in selectors_corpo:
-                            try:
-                                campo = driver.find_element(selector_type, selector_value)
-                                campo.click()
-                                time.sleep(0.5)
-
-                                # Cola o conteúdo HTML
-                                campo.send_keys(Keys.CONTROL + 'v')
-
-                                print(f"   -> ✅ Corpo do email preenchido com HTML formatado (fallback)")
-                                corpo_preenchido = True
-                                break
-                            except:
-                                continue
-
-        # Remove o arquivo temporário
-        try:
-            os.remove(html_temp_path)
-        except:
-            pass
+            # Remove o arquivo temporário
+            try:
+                os.remove(html_temp_path)
+            except:
+                pass
 
         if not corpo_preenchido:
             print("   -> AVISO: Campo corpo não encontrado.")
