@@ -257,6 +257,15 @@ def enviar_email(auto_mode=False):
         except:
             driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
 
+        # Aguarda a caixa de entrada carregar completamente
+        time.sleep(5)
+
+        if auto_mode:
+            driver.save_screenshot("debug_apos_login.png")
+            print(f"   -> Screenshot pós-login salvo (debug_apos_login.png)")
+            print(f"   -> URL atual: {driver.current_url}")
+            print(f"   -> Título da página: {driver.title}")
+
         # 5. Detectar Versão e Clicar em Novo
         print("Passo 5: Verificando versão carregada...")
 
