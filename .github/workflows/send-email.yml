@@ -42,3 +42,13 @@ jobs:
           path: |
             debug_*.png
           if-no-files-found: ignore
+
+      - name: Notificação via App GitHub
+        if: success()
+        run: |
+          echo "::notice title=Oninmetro - Sucesso::O e-mail de solicitação de transporte foi enviado para o Inmetro! 🚌"
+
+      - name: Notificação de Erro
+        if: failure()
+        run: |
+          echo "::error title=Oninmetro - FALHA::Ocorreu um erro ao tentar enviar o e-mail. Verifique os logs no GitHub."
