@@ -1,11 +1,8 @@
 name: Enviar Email de Transporte
 
 on:
-  schedule:
-    # Toda quinta-feira às 13:00 BRT (16:00 UTC)
-    - cron: '0 16 * * 4'
   workflow_dispatch:
-    # Permite disparar manualmente pela aba Actions
+    # Disparado pelo Google Apps Script ou manualmente pela aba Actions
 
 jobs:
   enviar-email:
